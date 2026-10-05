@@ -1,0 +1,18 @@
+# /etc/systemd/system/artifact-share.service
+# systemctl daemon-reload && systemctl enable --now artifact-share
+[Unit]
+Description=Artifact Share API (Spring Boot)
+After=network.target
+
+[Service]
+User=app
+WorkingDirectory=/opt/artifact-share
+Environment=OSS_ACCESS_KEY_ID=your-ak
+Environment=OSS_ACCESS_KEY_SECRET=your-sk
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/artifact-share/artifact-share-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

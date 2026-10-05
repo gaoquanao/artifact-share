@@ -1,0 +1,76 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: artifact-share
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 120MB
+  datasource:
+    # 开箱体验:本地 H2 文件库;生产切 MySQL(替换下面三行,并引入 mysql-connector-j,已在 pom 中)
+    # url: jdbc:mysql://127.0.0.1:3306/artifact_share?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    # username: artifact
+    # password: your-password
+    url: jdbc:h2:file:./data/artifact-share;MODE=MySQL;AUTO_SERVER=TRUE
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+share:
+  scheme: https
+  # 分享泛域名后缀:最终访问地址为 https://{slug}.<domain>/
+  # 需要在 DNS 添加泛解析 *.s.example.com → CDN 的 CNAME(见 deploy/云资源配置指南.md)
+  # 说明:DNS 通配符 *.s.example.com 只匹配一层(a.s.example.com ✔,a.b.s.example.com ✘),
+  #       因此 slug.s.example.com 即为所需的"三级域名"形态;若主域即泛解析可用 slug.example.com
+  domain: s.example.com
+  oss:
+    endpoint: https://oss-cn-hangzhou.aliyuncs.com
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    bucket: artifact-share
+    # 对象统一落在 <key-prefix>/<slug>/ 下,与 CDN/边缘改写规则中的 /s/{slug}/ 保持一致
+    key-prefix: s
+    # HTML 走短缓存(便于重新发布后立即生效),静态资源走 CDN 缓存
+    html-cache-control: no-cache
+    asset-cache-control: public, max-age=3600
+  cdn:
+    # 打开后,发布成功异步预热、下线时刷新 CDN 缓存(走 CDN OpenAPI)
+    enabled: false
+    region: cn-hangzhou
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    warmup-on-publish: true
+  publish:
+    max-files: 300
+    max-total-bytes: 52428800
+    # agent 在 Windows 打的 zip 可能为 GBK 编码,按需调整
+    zip-charset: UTF-8
+    reserved-slugs: www,api,admin,cdn,static,assets,mail,test,demo,docs,help,status,blog
+  agent:
+    # 网页生成工作台:LLM 只在服务端调用,前端不接触 API Key
+    enabled: false
+    # OpenAI 兼容服务,如智谱 https://open.bigmodel.cn/api/paas/v4
+    base-url: ${LLM_BASE_URL:https://open.bigmodel.cn/api/paas/v4}
+    api-key: ${LLM_API_KEY:}
+    # 前端模型选择器可选项,按你的服务实际支持填写
+    models: glm-4.6,glm-4.5-air,glm-4.5-flash
+    default-model: glm-4.6
+    timeout-seconds: 300
+    max-tokens: 16384
+    temperature: 0.7
+    workspace:
+      # 项目工作区(源文件 + npm 构建产物)根目录
+      root: ./data/projects
+    build:
+      # 服务器需安装 Node.js;systemd 等受限 PATH 环境建议写绝对路径
+      npm-bin: npm
+      timeout-seconds: 900
+
+logging:
+  level:
+    com.example.artifactshare: INFO
